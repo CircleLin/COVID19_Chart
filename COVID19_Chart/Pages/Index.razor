@@ -1,0 +1,63 @@
+﻿@page "/"
+@inject ICOVID19Service COVID19Service
+@inject IJSRuntime js
+
+<h2>COVID19 Chart</h2>
+<hr />
+
+@if (countries != null)
+{
+    <div class="form-group">
+        <label for="countrySelect" class="font-weight-bold">國家</label>
+        <select @onchange="ChangeCountryAsync" class="form-control" id="countrySelect">
+            <option>--請選擇--</option>
+
+            @foreach (var item in countries)
+            {
+                <option value="@item.Slug" selected="@(item.Slug == DefaultCountry)">@item.Country</option>
+            }
+        </select>
+    </div>
+
+    //顯示chart的canvas標籤
+    <canvas id="myChart" width="800" height="300"></canvas>
+}
+else
+{
+    //還在讀取資料時，顯示loading gif
+    <img src="https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif" />
+}
+
+@code{
+
+    public string DefaultCountry { get; set; } = "taiwan";
+
+    public List<CountryModel> countries;
+
+    public List<CountrySummary> summaryList;
+
+    public string selectedCountry { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        countries = await COVID19Service.GetCountriesAsync();
+        BuildChartAsync(DefaultCountry);
+    }
+
+    public async Task ChangeCountryAsync(ChangeEventArgs e)
+    {
+        if (e.Value != null)
+        {
+            await BuildChartAsync(e.Value.ToString());
+        }
+    }
+
+    private async Task BuildChartAsync(string selectedValue)
+    {
+        summaryList = await COVID19Service.GetCountrySummaryAsync(selectedValue);
+        summaryList.ForEach(x => x.ShortDate = $"{x.Date.Month}/{x.Date.Day}");
+
+        await js.InvokeVoidAsync("DrawLineChart", summaryList);
+    }
+
+}
